@@ -17,12 +17,15 @@ const mapStatusToEmoji = (status: string): string => {
     }
 };
 
-const getStageStatus = (builds: any[]): 'failed' | 'running' | 'success' => {
+const getStageStatus = (builds: any[]): 'failed' | 'running' | 'success' | 'pending' => {
     if (builds.some((b) => b.status === 'failed')) {
         return 'failed';
     }
     if (builds.every((b) => b.status === 'success')) {
         return 'success';
+    }
+    if (builds.every((b) => b.status === 'created' || b.status === 'pending')) {
+        return 'pending';
     }
     return 'running';
 };
@@ -66,41 +69,48 @@ export const buildPipelineMessageBlocks = (
 
     for (const stageName of stages) {
         const stageBuilds = buildsByStage.get(stageName);
-
-        if (stageBuilds && stageBuilds.length > 0) {
-            const stageStatus = getStageStatus(stageBuilds);
-            const stageEmoji = mapStatusToEmoji(stageStatus);
-            const isExpanded = expandedStages.has(stageName);
-
-            const button: Button = {
-                type: 'button',
-                text: {
-                    type: 'plain_text',
-                    text: isExpanded ? 'Hide' : 'Show',
-                    emoji: true,
-                },
-                action_id: isExpanded ? 'hide_stage' : 'show_stage',
-                value: JSON.stringify({ stageName, pipelineId }),
-            };
-
+        
+        // If no builds exist for this stage yet, it hasn't started
+        if (!stageBuilds || stageBuilds.length === 0) {
             blocks.push({
                 type: 'section',
-                text: { type: 'mrkdwn', text: `${stageEmoji} *${stageName}*` },
-                accessory: button,
+                text: { type: 'mrkdwn', text: `⏳ *${stageName}*` },
             });
+            continue;
+        }
 
-            if (isExpanded) {
-                const jobFields = stageBuilds.map((build) => ({
-                    type: 'mrkdwn' as const,
-                    text: `${mapStatusToEmoji(build.status)} *${build.name}:* ${build.status}`,
-                }));
+        const stageStatus = getStageStatus(stageBuilds);
+        const stageEmoji = mapStatusToEmoji(stageStatus);
+        const isExpanded = expandedStages.has(stageName);
 
-                for (let i = 0; i < jobFields.length; i += 10) {
-                    blocks.push({
-                        type: 'section',
-                        fields: jobFields.slice(i, i + 10),
-                    });
-                }
+        const button: Button = {
+            type: 'button',
+            text: {
+                type: 'plain_text',
+                text: isExpanded ? 'Hide' : 'Show',
+                emoji: true,
+            },
+            action_id: isExpanded ? 'hide_stage' : 'show_stage',
+            value: JSON.stringify({ stageName, pipelineId }),
+        };
+
+        blocks.push({
+            type: 'section',
+            text: { type: 'mrkdwn', text: `${stageEmoji} *${stageName}*` },
+            accessory: button,
+        });
+
+        if (isExpanded) {
+            const jobFields = stageBuilds.map((build) => ({
+                type: 'mrkdwn' as const,
+                text: `${mapStatusToEmoji(build.status)} *${build.name}:* ${build.status}`,
+            }));
+
+            for (let i = 0; i < jobFields.length; i += 10) {
+                blocks.push({
+                    type: 'section',
+                    fields: jobFields.slice(i, i + 10),
+                });
             }
         }
     }
