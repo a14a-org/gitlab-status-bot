@@ -1,0 +1,48 @@
+{
+  "name": "gitlab-status-bot",
+  "version": "1.0.0",
+  "description": "A Slack bot that provides rich, interactive, and real-time status updates for GitLab CI/CD pipelines",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node-dev src/index.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a14a-org/gitlab-status-bot.git"
+  },
+  "keywords": [
+    "slack",
+    "gitlab",
+    "ci-cd",
+    "bot",
+    "typescript",
+    "nodejs",
+    "webhook",
+    "pipeline",
+    "status"
+  ],
+  "author": "a14a-org",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/a14a-org/gitlab-status-bot/issues"
+  },
+  "homepage": "https://github.com/a14a-org/gitlab-status-bot#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.22.0",
+    "@slack/types": "^2.15.0",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}
