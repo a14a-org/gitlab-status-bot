@@ -23,7 +23,7 @@ export const gitlabWebhookRouter = (slackApp: App) => {
         try {
             if (objectKind === 'pipeline') {
                 const pipelineId = event.object_attributes.id;
-                const existingMessage = getPipelineState(pipelineId);
+                const existingMessage = await getPipelineState(pipelineId);
                 const blocks = buildPipelineMessageBlocks(
                     event,
                     existingMessage?.expandedStages || new Set()
@@ -37,7 +37,7 @@ export const gitlabWebhookRouter = (slackApp: App) => {
                         blocks: blocks,
                         text: 'Pipeline status updated.',
                     });
-                    setPipelineState(pipelineId, {
+                    await setPipelineState(pipelineId, {
                         ...existingMessage,
                         lastPipelineData: event,
                     });
@@ -49,7 +49,7 @@ export const gitlabWebhookRouter = (slackApp: App) => {
                         text: 'New pipeline started.',
                     });
                     if (result.ok && result.ts && result.channel) {
-                        setPipelineState(pipelineId, {
+                        await setPipelineState(pipelineId, {
                             ts: result.ts,
                             channel: result.channel,
                             expandedStages: new Set(),
@@ -60,7 +60,7 @@ export const gitlabWebhookRouter = (slackApp: App) => {
             } else if (objectKind === 'build') {
                 const pipelineId = event.pipeline_id;
                 const buildId = event.build_id;
-                const currentState = getPipelineState(pipelineId);
+                const currentState = await getPipelineState(pipelineId);
 
                 if (currentState) {
                     const buildToUpdate = currentState.lastPipelineData.builds.find(
@@ -69,7 +69,7 @@ export const gitlabWebhookRouter = (slackApp: App) => {
                     if (buildToUpdate) {
                         buildToUpdate.status = event.build_status;
                     }
-                    setPipelineState(pipelineId, currentState);
+                    await setPipelineState(pipelineId, currentState);
 
                     const blocks = buildPipelineMessageBlocks(
                         currentState.lastPipelineData,
