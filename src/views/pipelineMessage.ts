@@ -1,4 +1,5 @@
 import { KnownBlock, Button } from '@slack/types';
+import { isTestJob } from '../services/testLogParser';
 
 const mapStatusToEmoji = (status: string): string => {
     switch (status) {
@@ -116,23 +117,63 @@ export const buildPipelineMessageBlocks = (
     }
 
     const failedBuilds = builds.filter((build: any) => build.status === 'failed');
-    if (failedBuilds.length > 0) {
+    const successfulTestBuilds = builds.filter((build: any) => 
+        build.status === 'success' && isTestJob(build.name)
+    );
+    
+    if (failedBuilds.length > 0 || successfulTestBuilds.length > 0) {
         blocks.push({ type: 'divider' });
 
-        const errorButtons: Button[] = failedBuilds.map((build: any) => ({
-            type: 'button',
-            text: {
-                type: 'plain_text',
-                text: `Log: ${build.name}`,
-                emoji: true,
-            },
-            style: 'danger',
-            action_id: 'show_error_log',
-            value: String(build.id),
-        }));
+        const actionButtons: Button[] = [];
+        
+        // Add error log buttons for failed builds
+        failedBuilds.forEach((build: any) => {
+            actionButtons.push({
+                type: 'button',
+                text: {
+                    type: 'plain_text',
+                    text: `Log: ${build.name}`,
+                    emoji: true,
+                },
+                style: 'danger',
+                action_id: 'show_error_log',
+                value: String(build.id),
+            });
+        });
+        
+        // Add test summary buttons for successful test builds
+        successfulTestBuilds.forEach((build: any) => {
+            actionButtons.push({
+                type: 'button',
+                text: {
+                    type: 'plain_text',
+                    text: `📊 ${build.name}`,
+                    emoji: true,
+                },
+                style: 'primary',
+                action_id: 'show_test_summary',
+                value: JSON.stringify({ jobId: build.id, jobName: build.name }),
+            });
+        });
 
-        for (let i = 0; i < errorButtons.length; i += 5) {
-            const chunk = errorButtons.slice(i, i + 5);
+        // Also add test summary buttons for failed test builds
+        const failedTestBuilds = failedBuilds.filter((build: any) => isTestJob(build.name));
+        failedTestBuilds.forEach((build: any) => {
+            actionButtons.push({
+                type: 'button',
+                text: {
+                    type: 'plain_text',
+                    text: `📊 ${build.name}`,
+                    emoji: true,
+                },
+                style: 'danger',
+                action_id: 'show_test_summary',
+                value: JSON.stringify({ jobId: build.id, jobName: build.name }),
+            });
+        });
+
+        for (let i = 0; i < actionButtons.length; i += 5) {
+            const chunk = actionButtons.slice(i, i + 5);
             blocks.push({
                 type: 'actions',
                 elements: chunk,

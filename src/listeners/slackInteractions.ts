@@ -1,8 +1,9 @@
 import { App } from '@slack/bolt';
 import { KnownBlock } from '@slack/types';
-import { getJobLog } from '../services/gitlabApi';
+import { getJobLog, getJobTestResults } from '../services/gitlabApi';
 import { getPipelineState, setPipelineState } from '../state/pipelineState';
 import { buildPipelineMessageBlocks } from '../views/pipelineMessage';
+import { buildTestSummaryReplacementBlock } from '../views/testSummaryMessage';
 
 // Handler for showing/hiding stage details
 const toggleStageVisibility = async (args: any, show: boolean) => {
@@ -89,8 +90,50 @@ const showErrorLogAction = async (args: any) => {
     }
 };
 
+// Handler for showing test summary
+const showTestSummaryAction = async (args: any) => {
+    const { ack, body, action, client } = args;
+    
+    await ack();
+    const { jobId, jobName } = JSON.parse(action.value);
+    const originalMessage = body.message;
+
+    if (!originalMessage?.ts || !body.channel?.id) {
+        console.error('Could not find original message details to update.');
+        return;
+    }
+
+    try {
+        const testResults = await getJobTestResults(jobId);
+        const summaryBlock = buildTestSummaryReplacementBlock(testResults, jobName);
+
+        const originalBlocks = (originalMessage.blocks as KnownBlock[]) || [];
+        const actionBlockIndex = originalBlocks.findIndex(
+            (block) =>
+                block.type === 'actions' &&
+                (block.elements as any[]).some(
+                    (el) => el.action_id === 'show_test_summary' && el.value === action.value
+                )
+        );
+
+        if (actionBlockIndex !== -1) {
+            originalBlocks.splice(actionBlockIndex, 1, summaryBlock);
+        }
+
+        await client.chat.update({
+            token: process.env.SLACK_BOT_TOKEN,
+            channel: body.channel.id,
+            ts: originalMessage.ts,
+            blocks: originalBlocks,
+        });
+    } catch (error) {
+        console.error('Failed to show test summary', error);
+    }
+};
+
 export const registerSlackListeners = (app: App) => {
     app.action({ action_id: 'show_error_log' }, showErrorLogAction);
+    app.action({ action_id: 'show_test_summary' }, showTestSummaryAction);
     app.action({ action_id: 'show_stage' }, (args) => toggleStageVisibility(args, true));
     app.action({ action_id: 'hide_stage' }, (args) => toggleStageVisibility(args, false));
 };
