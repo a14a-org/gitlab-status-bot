@@ -125,51 +125,68 @@ export const buildPipelineMessageBlocks = (
         blocks.push({ type: 'divider' });
 
         const actionButtons: Button[] = [];
+        const addedTestJobs = new Set<number>(); // Track which test jobs we've already added
         
         // Add error log buttons for failed builds
         failedBuilds.forEach((build: any) => {
-            actionButtons.push({
-                type: 'button',
-                text: {
-                    type: 'plain_text',
-                    text: `Log: ${build.name}`,
-                    emoji: true,
-                },
-                style: 'danger',
-                action_id: 'show_error_log',
-                value: String(build.id),
-            });
+            // For non-test jobs, just add the error log button
+            if (!isTestJob(build.name)) {
+                actionButtons.push({
+                    type: 'button',
+                    text: {
+                        type: 'plain_text',
+                        text: `Log: ${build.name}`,
+                        emoji: true,
+                    },
+                    style: 'danger',
+                    action_id: `show_error_log_${build.id}`,
+                    value: String(build.id),
+                });
+            } else {
+                // For test jobs, add both error log and test summary buttons
+                actionButtons.push({
+                    type: 'button',
+                    text: {
+                        type: 'plain_text',
+                        text: `Log: ${build.name}`,
+                        emoji: true,
+                    },
+                    style: 'danger',
+                    action_id: `show_error_log_${build.id}`,
+                    value: String(build.id),
+                });
+                
+                actionButtons.push({
+                    type: 'button',
+                    text: {
+                        type: 'plain_text',
+                        text: `📊 ${build.name}`,
+                        emoji: true,
+                    },
+                    style: 'danger',
+                    action_id: `show_test_summary_${build.id}`,
+                    value: JSON.stringify({ jobId: build.id, jobName: build.name }),
+                });
+                
+                addedTestJobs.add(build.id);
+            }
         });
         
         // Add test summary buttons for successful test builds
         successfulTestBuilds.forEach((build: any) => {
-            actionButtons.push({
-                type: 'button',
-                text: {
-                    type: 'plain_text',
-                    text: `📊 ${build.name}`,
-                    emoji: true,
-                },
-                style: 'primary',
-                action_id: 'show_test_summary',
-                value: JSON.stringify({ jobId: build.id, jobName: build.name }),
-            });
-        });
-
-        // Also add test summary buttons for failed test builds
-        const failedTestBuilds = failedBuilds.filter((build: any) => isTestJob(build.name));
-        failedTestBuilds.forEach((build: any) => {
-            actionButtons.push({
-                type: 'button',
-                text: {
-                    type: 'plain_text',
-                    text: `📊 ${build.name}`,
-                    emoji: true,
-                },
-                style: 'danger',
-                action_id: 'show_test_summary',
-                value: JSON.stringify({ jobId: build.id, jobName: build.name }),
-            });
+            if (!addedTestJobs.has(build.id)) {
+                actionButtons.push({
+                    type: 'button',
+                    text: {
+                        type: 'plain_text',
+                        text: `📊 ${build.name}`,
+                        emoji: true,
+                    },
+                    style: 'primary',
+                    action_id: `show_test_summary_${build.id}`,
+                    value: JSON.stringify({ jobId: build.id, jobName: build.name }),
+                });
+            }
         });
 
         for (let i = 0; i < actionButtons.length; i += 5) {

@@ -22,6 +22,24 @@ export interface TestResults {
 
 export const parseJestOutput = (logContent: string): TestResults | null => {
     try {
+        // Check if this looks like Jest output at all
+        const hasJestMarkers = logContent.includes('PASS') || logContent.includes('FAIL') || 
+                               logContent.includes('Test Suites:') || logContent.includes('Tests:');
+        
+        if (!hasJestMarkers) {
+            // Try to detect if it's a test that ran but had no output
+            if (logContent.includes('Job succeeded') && logContent.length < 1000) {
+                // Probably a test job with no actual tests
+                return {
+                    suites: { total: 0, passed: 0, failed: 0 },
+                    tests: { total: 0, passed: 0, failed: 0 },
+                    duration: 'N/A',
+                    testFiles: []
+                };
+            }
+            return null;
+        }
+
         // Extract test files with their status
         const testFiles: TestResults['testFiles'] = [];
         const testFileRegex = /\s*(PASS|FAIL)\s+(.+?)(?:\s+\(([0-9.]+)\s*s\))?$/gm;
@@ -45,6 +63,26 @@ export const parseJestOutput = (logContent: string): TestResults | null => {
         const timeMatch = logContent.match(timeRegex);
 
         if (!suiteMatch || !testMatch) {
+            // If we found test files but no summary, create a summary from the files
+            if (testFiles.length > 0) {
+                const passedFiles = testFiles.filter(f => f.status === 'PASS').length;
+                const failedFiles = testFiles.filter(f => f.status === 'FAIL').length;
+                
+                return {
+                    suites: { 
+                        total: testFiles.length, 
+                        passed: passedFiles, 
+                        failed: failedFiles 
+                    },
+                    tests: { 
+                        total: testFiles.length, 
+                        passed: passedFiles, 
+                        failed: failedFiles 
+                    },
+                    duration: timeMatch ? `${timeMatch[1]}s` : 'N/A',
+                    testFiles
+                };
+            }
             return null;
         }
 

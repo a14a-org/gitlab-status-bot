@@ -71,7 +71,7 @@ const showErrorLogAction = async (args: any) => {
             (block) =>
                 block.type === 'actions' &&
                 (block.elements as any[]).some(
-                    (el) => el.action_id === 'show_error_log' && el.value === action.value
+                    (el) => el.action_id === action.action_id && el.value === action.value
                 )
         );
 
@@ -112,7 +112,7 @@ const showTestSummaryAction = async (args: any) => {
             (block) =>
                 block.type === 'actions' &&
                 (block.elements as any[]).some(
-                    (el) => el.action_id === 'show_test_summary' && el.value === action.value
+                    (el) => el.action_id === action.action_id && el.value === action.value
                 )
         );
 
@@ -132,8 +132,9 @@ const showTestSummaryAction = async (args: any) => {
 };
 
 export const registerSlackListeners = (app: App) => {
-    app.action({ action_id: 'show_error_log' }, showErrorLogAction);
-    app.action({ action_id: 'show_test_summary' }, showTestSummaryAction);
+    // Use regex patterns to match dynamic action IDs
+    app.action(/^show_error_log/, showErrorLogAction);
+    app.action(/^show_test_summary/, showTestSummaryAction);
     app.action({ action_id: 'show_stage' }, (args) => toggleStageVisibility(args, true));
     app.action({ action_id: 'hide_stage' }, (args) => toggleStageVisibility(args, false));
 };
