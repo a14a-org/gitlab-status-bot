@@ -208,11 +208,19 @@ export class ErrorAggregator {
         try {
             const today = new Date().toISOString().split('T')[0];
             
+            // Convert Maps to plain objects for Firestore
+            const firestoreReport = {
+                summary: report.summary,
+                byService: Object.fromEntries(report.byService),
+                bySeverity: report.bySeverity,
+                hourlyDistribution: Object.fromEntries(report.hourlyDistribution),
+            };
+            
             await this.firestore
                 .collection(this.collectionName)
                 .doc(today)
                 .set({
-                    report,
+                    report: firestoreReport,
                     stats: {
                         totalErrors: report.summary.totalErrors,
                         errorGroups: report.summary.topErrors,

@@ -131,10 +131,44 @@ const showTestSummaryAction = async (args: any) => {
     }
 };
 
+// Handler for viewing error details from error report
+const viewErrorDetailsAction = async (args: any) => {
+    const { ack, body, action, client } = args;
+    
+    await ack();
+    const errorGroupId = action.value;
+    
+    // For now, just acknowledge the click. 
+    // In a full implementation, you would fetch detailed error info from the API
+    // and display it in a modal or thread
+    console.log(`User requested details for error group: ${errorGroupId}`);
+    
+    // Post a message in thread with more details
+    try {
+        await client.chat.postMessage({
+            channel: body.channel.id,
+            thread_ts: body.message.ts,
+            text: `🔍 Error details for group ${errorGroupId}:\n\nDetailed error information would be fetched from the Error Reporting API and displayed here. This feature is pending implementation.`,
+        });
+    } catch (error) {
+        console.error('Failed to show error details:', error);
+    }
+};
+
+// Handler for configure alerts button
+const configureAlertsAction = async (args: any) => {
+    const { ack } = args;
+    await ack();
+    console.log('User clicked configure alerts button');
+};
+
 export const registerSlackListeners = (app: App) => {
     // Use regex patterns to match dynamic action IDs
     app.action(/^show_error_log/, showErrorLogAction);
     app.action(/^show_test_summary/, showTestSummaryAction);
+    app.action(/^view_error_/, viewErrorDetailsAction);
     app.action({ action_id: 'show_stage' }, (args) => toggleStageVisibility(args, true));
     app.action({ action_id: 'hide_stage' }, (args) => toggleStageVisibility(args, false));
+    app.action({ action_id: 'configure_alerts' }, configureAlertsAction);
+    app.action({ action_id: 'view_console' }, async ({ ack }) => await ack()); // Just acknowledge
 };
