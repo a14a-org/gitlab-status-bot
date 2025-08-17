@@ -198,12 +198,12 @@ export class ErrorReportMessageBuilder {
     private buildHourlyTrend(): KnownBlock {
         const distribution = this.report.hourlyDistribution;
         const maxCount = Math.max(...Array.from(distribution.values()));
-        const totalErrors = Array.from(distribution.values()).reduce((a, b) => a + b, 0);
+        const totalErrorTypes = Array.from(distribution.values()).reduce((a, b) => a + b, 0);
         
-        let trendText = '📈 *24-Hour Distribution*';
+        let trendText = '📊 *Error Types by Hour* (when last seen)';
         
         // Only show the graph if we have data
-        if (totalErrors > 0) {
+        if (totalErrorTypes > 0) {
             trendText += '\n```\n';
             
             // Build the sparkline
@@ -228,14 +228,15 @@ export class ErrorReportMessageBuilder {
             
             trendText += `00:00 ${sparkline} 23:59\n`;
             
-            // Add peak hour info if there's a clear peak
-            if (peakCount > totalErrors * 0.2) { // If peak hour has >20% of errors
-                trendText += `Peak: ${String(peakHour).padStart(2, '0')}:00 (${peakCount.toLocaleString()} errors)\n`;
+            // Add context about what this shows
+            if (peakCount > 0) {
+                trendText += `Most error types last seen: ${String(peakHour).padStart(2, '0')}:00 (${peakCount} types)\n`;
             }
             
             trendText += '```';
+            trendText += '\n_Note: Shows when error types were last active, not occurrence frequency_';
         } else {
-            trendText += '\n```\nNo error distribution data available\n```';
+            trendText += '\n```\nNo error type distribution available\n```';
         }
         
         return {
