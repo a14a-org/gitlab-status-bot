@@ -198,21 +198,45 @@ export class ErrorReportMessageBuilder {
     private buildHourlyTrend(): KnownBlock {
         const distribution = this.report.hourlyDistribution;
         const maxCount = Math.max(...Array.from(distribution.values()));
+        const totalErrors = Array.from(distribution.values()).reduce((a, b) => a + b, 0);
         
-        let trendText = '📈 *24-Hour Distribution*\n```\n';
+        let trendText = '📈 *24-Hour Distribution*';
         
-        // Build the sparkline
-        const sparkChars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-        let sparkline = '';
-        
-        for (let hour = 0; hour < 24; hour++) {
-            const count = distribution.get(hour) || 0;
-            const level = maxCount > 0 ? Math.floor((count / maxCount) * 7) : 0;
-            sparkline += sparkChars[level];
+        // Only show the graph if we have data
+        if (totalErrors > 0) {
+            trendText += '\n```\n';
+            
+            // Build the sparkline
+            const sparkChars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+            let sparkline = '';
+            
+            // Find the hours with significant activity
+            let peakHour = 0;
+            let peakCount = 0;
+            
+            for (let hour = 0; hour < 24; hour++) {
+                const count = distribution.get(hour) || 0;
+                
+                if (count > peakCount) {
+                    peakCount = count;
+                    peakHour = hour;
+                }
+                
+                const level = maxCount > 0 ? Math.floor((count / maxCount) * 7) : 0;
+                sparkline += sparkChars[level];
+            }
+            
+            trendText += `00:00 ${sparkline} 23:59\n`;
+            
+            // Add peak hour info if there's a clear peak
+            if (peakCount > totalErrors * 0.2) { // If peak hour has >20% of errors
+                trendText += `Peak: ${String(peakHour).padStart(2, '0')}:00 (${peakCount.toLocaleString()} errors)\n`;
+            }
+            
+            trendText += '```';
+        } else {
+            trendText += '\n```\nNo error distribution data available\n```';
         }
-        
-        trendText += `00:00 ${sparkline} 23:59\n`;
-        trendText += '```';
         
         return {
             type: 'section',
