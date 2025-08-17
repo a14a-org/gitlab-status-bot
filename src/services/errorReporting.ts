@@ -106,10 +106,8 @@ export class ErrorReportingService {
                         Authorization: `Bearer ${accessToken}`,
                     },
                     params: {
-                        timeRange: {
-                            period: timeRange,
-                        },
-                        pageSize: 100,
+                        'timeRange.period': timeRange,
+                        'pageSize': 100,
                     },
                 }
             );
