@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { App } from '@slack/bolt';
 import { gitlabWebhookRouter } from './webhooks/gitlab';
 import { registerSlackListeners } from './listeners/slackInteractions';
+import { createErrorReportRouter } from './endpoints/errorReport';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -54,6 +55,9 @@ app.get('/health', (req, res) => {
 
 // Register our webhook router, passing the slack app instance
 app.use('/webhooks', gitlabWebhookRouter(slackApp));
+
+// Register error report endpoint for Cloud Scheduler
+app.use('/reports/errors', createErrorReportRouter(slackApp));
 
 (async () => {
     try {
