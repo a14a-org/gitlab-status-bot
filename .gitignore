@@ -12,4 +12,8 @@
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log* 
+yarn-error.log* .pnp.cjs
+.pnp.loader.mjs
+yarn.lock
+CLAUDE.md
+docs/
