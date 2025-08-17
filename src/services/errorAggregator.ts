@@ -41,7 +41,7 @@ export class ErrorAggregator {
 
     async generateDailyReport(): Promise<AggregatedErrorReport> {
         // Get current day stats
-        const currentStats = await this.errorReporting.getErrorStats('P1D');
+        const currentStats = await this.errorReporting.getErrorStats('PERIOD_1_DAY');
         
         // Get previous day stats for comparison
         const previousStats = await this.getPreviousDayStats();

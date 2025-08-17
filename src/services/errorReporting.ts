@@ -54,11 +54,11 @@ export class ErrorReportingService {
         });
     }
 
-    async getErrorStats(timeRange: 'P1D' | 'P7D' = 'P1D'): Promise<ErrorStats> {
+    async getErrorStats(timeRange: 'PERIOD_1_DAY' | 'PERIOD_7_DAYS' = 'PERIOD_1_DAY'): Promise<ErrorStats> {
         const endTime = new Date();
         const startTime = new Date();
         
-        if (timeRange === 'P1D') {
+        if (timeRange === 'PERIOD_1_DAY') {
             startTime.setDate(startTime.getDate() - 1);
         } else {
             startTime.setDate(startTime.getDate() - 7);
