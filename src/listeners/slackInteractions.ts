@@ -4,6 +4,8 @@ import { getJobLog, getJobTestResults } from '../services/gitlabApi';
 import { getPipelineState, setPipelineState } from '../state/pipelineState';
 import { buildPipelineMessageBlocks } from '../views/pipelineMessage';
 import { buildTestSummaryReplacementBlock } from '../views/testSummaryMessage';
+import { ErrorReportingService } from '../services/errorReporting';
+import { formatErrorDetailsForSlack } from '../views/errorDetailsMessage';
 
 // Handler for showing/hiding stage details
 const toggleStageVisibility = async (args: any, show: boolean) => {
@@ -138,18 +140,39 @@ const viewErrorDetailsAction = async (args: any) => {
     await ack();
     const errorGroupId = action.value;
     
-    // For now, just acknowledge the click. 
-    // In a full implementation, you would fetch detailed error info from the API
-    // and display it in a modal or thread
     console.log(`User requested details for error group: ${errorGroupId}`);
     
-    // Post a message in thread with more details
+    // Post a message in thread with error details
     try {
-        await client.chat.postMessage({
+        // Fetch error details from the API
+        const projectId = process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+        const errorReporting = new ErrorReportingService(projectId);
+        
+        // Send initial loading message
+        const loadingMessage = await client.chat.postMessage({
             channel: body.channel.id,
             thread_ts: body.message.ts,
-            text: `🔍 Error details for group ${errorGroupId}:\n\nDetailed error information would be fetched from the Error Reporting API and displayed here. This feature is pending implementation.`,
+            text: `⏳ Loading error details...`,
         });
+        
+        try {
+            const errorDetails = await errorReporting.getErrorGroupDetails(errorGroupId);
+            const formattedMessage = formatErrorDetailsForSlack(errorDetails, projectId || '');
+            
+            // Update the loading message with actual content
+            await client.chat.update({
+                channel: body.channel.id,
+                ts: loadingMessage.ts!,
+                text: formattedMessage,
+            });
+        } catch (fetchError) {
+            // Update with error message
+            await client.chat.update({
+                channel: body.channel.id,
+                ts: loadingMessage.ts!,
+                text: `❌ Failed to fetch error details for group ${errorGroupId}.\n\nError: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}\n\n🔗 <https://console.cloud.google.com/errors/detail/${encodeURIComponent(errorGroupId)}?project=${projectId}|View in Cloud Console>`,
+            });
+        }
     } catch (error) {
         console.error('Failed to show error details:', error);
     }

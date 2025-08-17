@@ -185,16 +185,35 @@ export class ErrorReportingService {
                 }
             }
             
-            const response = await axios.get(
-                `https://clouderrorreporting.googleapis.com/v1beta1/projects/${this.projectId}/groups/${groupId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                }
-            );
+            // Get both the group details and recent events
+            const [groupResponse, eventsResponse] = await Promise.all([
+                axios.get(
+                    `https://clouderrorreporting.googleapis.com/v1beta1/projects/${this.projectId}/groups/${groupId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                    }
+                ),
+                axios.get(
+                    `https://clouderrorreporting.googleapis.com/v1beta1/projects/${this.projectId}/events`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                        params: {
+                            'groupId': groupId,
+                            'pageSize': 5,  // Get 5 most recent occurrences
+                            'timeRange.period': 'PERIOD_7_DAYS',
+                        },
+                    }
+                ).catch(() => ({ data: { errorEvents: [] } }))  // Gracefully handle if no events
+            ]);
 
-            return response.data;
+            return {
+                group: groupResponse.data,
+                recentEvents: eventsResponse.data.errorEvents || [],
+            };
         } catch (error) {
             console.error('Error fetching error group details:', error);
             throw error;
