@@ -40,7 +40,7 @@
     "@google-cloud/firestore": "^7.10.0",
     "@slack/bolt": "^3.22.0",
     "@slack/types": "^2.14.0",
-    "axios": "^1.7.9",
+    "axios": "^1.13.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2"
   },
