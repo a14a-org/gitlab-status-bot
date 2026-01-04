@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@google-cloud/error-reporting": "^3.0.5",
-    "@google-cloud/firestore": "^7.10.0",
+    "@google-cloud/firestore": "^8.0.0",
     "@slack/bolt": "^3.22.0",
     "@slack/types": "^2.14.0",
     "axios": "^1.7.9",
