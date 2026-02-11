@@ -41,7 +41,7 @@
     "@slack/bolt": "^4.6.0",
     "@slack/types": "^2.14.0",
     "axios": "^1.13.5",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.2.4",
     "express": "^5.2.1"
   },
   "devDependencies": {
