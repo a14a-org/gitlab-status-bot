@@ -39,7 +39,7 @@
     "@google-cloud/error-reporting": "^3.0.5",
     "@google-cloud/firestore": "^8.3.0",
     "@slack/bolt": "^4.6.0",
-    "@slack/types": "^2.14.0",
+    "@slack/types": "^2.20.0",
     "axios": "^1.13.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1"
