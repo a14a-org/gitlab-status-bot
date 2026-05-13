@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/a14a-org/gitlab-status-bot#readme",
   "engines": {
-    "node": ">=16.20.2"
+    "node": ">=24.15.0"
   },
   "dependencies": {
     "@google-cloud/error-reporting": "^3.0.5",
