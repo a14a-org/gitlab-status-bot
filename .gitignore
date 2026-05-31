@@ -17,3 +17,8 @@ yarn-error.log* .pnp.cjs
 yarn.lock
 CLAUDE.md
 docs/
+
+# Test artifacts
+/test-results
+/playwright-report
+/playwright/.cache
