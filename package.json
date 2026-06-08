@@ -41,7 +41,7 @@
     "node": ">=16.20.2"
   },
   "dependencies": {
-    "@google-cloud/error-reporting": "^3.0.5",
+    "@google-cloud/error-reporting": "^3.0.6",
     "@google-cloud/firestore": "^8.6.0",
     "@slack/bolt": "^4.7.3",
     "@slack/types": "^2.21.1",
