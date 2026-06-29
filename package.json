@@ -55,6 +55,6 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3",
     "@playwright/test": "^1.61.1",
-    "@biomejs/biome": "^2.4.16"
+    "@biomejs/biome": "^2.5.1"
   }
 }
