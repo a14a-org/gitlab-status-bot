@@ -3,7 +3,7 @@ import express, { type Express } from "express";
 import { gitlabWebhookRouter } from "../../src/webhooks/gitlab";
 
 export interface SlackCall {
-	method: "postMessage" | "update";
+	method: "postMessage" | "update" | "delete";
 	args: Record<string, unknown>;
 }
 
@@ -15,10 +15,14 @@ export const createSlackStub = (calls: SlackCall[]) =>
 			chat: {
 				postMessage: async (args: Record<string, unknown>) => {
 					calls.push({ method: "postMessage", args });
-					return { ok: true, ts: "1700000000.0001", channel: "C123" };
+					return { ok: true, ts: `170000000${calls.length}.0001`, channel: "C123" };
 				},
 				update: async (args: Record<string, unknown>) => {
 					calls.push({ method: "update", args });
+					return { ok: true };
+				},
+				delete: async (args: Record<string, unknown>) => {
+					calls.push({ method: "delete", args });
 					return { ok: true };
 				},
 			},
