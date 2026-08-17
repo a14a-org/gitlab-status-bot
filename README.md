@@ -1,25 +1,41 @@
 # GitLab CI/CD Status Bot for Slack
 
-This project is a Node.js/TypeScript application that provides rich, interactive, and real-time status updates for GitLab CI/CD pipelines directly within a Slack channel. It is designed to reduce channel noise by consolidating all pipeline updates into a single, dynamic message while providing easy access to detailed information.
+This project is a Node.js/TypeScript application that reports GitLab CI/CD pipeline status into a Slack channel. It posts **one card per commit** and updates that card in place, so a deploy reads as a single line of channel history instead of a stream of messages.
 
-**🚀 Serverless-Ready**: Built for Google Cloud Run with Firestore for state management, allowing the bot to scale to zero when idle and handle sporadic webhook traffic efficiently.
+## What the card looks like
+
+```
+🟡  main · fix: correct the widget total on the summary page
+    ✅ prepare  ✅ test  ✅ pre_build  ⚙️ build 12/26  ⏳ deploy_staging  ⏳ deploy_prod
+    9f8c0d2a · by Ada Lovelace · 8m14s · push ↗ · MR ↗ · !42
+    [Log: build-job-23]  [Details (72 jobs)]
+```
+
+The card is a fixed four blocks whether the pipeline has 2 jobs or 72. Everything expandable — the full per-stage job breakdown, failed job logs, parsed test summaries — is posted as a **thread reply**, so the channel stays readable.
 
 ## Features
 
--   **Consolidated Status Message**: Instead of one message per job, the bot posts a single message for each pipeline and updates it in place.
--   **Real-Time Updates**: Subscribes to both pipeline and job events from GitLab to update the status of each job as it happens.
--   **Interactive UI**: Users can expand and collapse stages (e.g., lint, build, test) to see job details without cluttering the channel.
--   **At-a-Glance Summary**: Each stage is marked with an emoji (✅, ❌, ⚙️) indicating its overall status.
--   **Inline Error Logs**: If a job fails, a "Show Error Log" button appears, allowing users to view the last 20 lines of the job's log directly within Slack.
--   **Serverless Architecture**: Uses Google Cloud Firestore for persistent state, making it compatible with serverless environments like Cloud Run.
+-   **One card per commit.** A push pipeline and its detached merge-request pipeline share a commit SHA, so they share a card rather than producing two messages. Both pipelines are linked from the card's meta line.
+-   **Only pipelines that matter.** A commit gets a card when its branch is on `DEPLOY_BRANCHES`, or when any of its pipelines actually contains a deploy stage. Ordinary feature-branch runs stay out of the channel.
+-   **Coalesced updates.** A large monorepo deploy emits over 200 job transitions. Those are batched into one Slack call per window (`UPDATE_DEBOUNCE_MS`, default 4s), with failures and terminal states rendering immediately. In practice ~60 job events produce ~5 Slack calls instead of 61.
+-   **Transactional state.** GitLab delivers webhooks in bursts, so every state change runs inside a Firestore transaction. Job statuses cannot clobber each other.
+-   **Structured logging.** Every log line is JSON on stdout, which Cloud Logging promotes to `jsonPayload` with a real severity.
 
 ## How It Works
 
-The application is built with a few key components:
--   **Express.js**: Runs a web server to listen for incoming webhook requests from GitLab.
--   **Slack Bolt for JS**: Manages all interaction with the Slack API, including posting/updating messages and handling button clicks via Socket Mode.
--   **Google Cloud Firestore**: Persistent state management that survives server restarts and scales with serverless deployments.
--   **GitLab API Integration**: Uses `axios` to make authenticated calls to the GitLab API to fetch job logs when requested.
+-   **Express.js** receives GitLab pipeline and job webhooks, acknowledges them immediately, then processes asynchronously (GitLab times webhooks out at 10s).
+-   **Firestore** holds one document per commit, keyed `<projectId>_<sha>`, updated transactionally. Documents past `STATE_TTL_DAYS` are swept periodically.
+-   **The render queue** debounces and coalesces card updates, and serialises work per commit so a burst cannot post two cards for the same commit.
+-   **Slack Bolt** posts and updates the card and handles button clicks over Socket Mode.
+-   **GitLab API** is called via `axios` to fetch job traces on demand.
+
+### Operational constraints
+
+Socket Mode holds a persistent WebSocket, so the service needs `--no-cpu-throttling` for the connection to survive between requests. That combination keeps the instance alive continuously — measured at 24 billable instance-hours per day — so the service is effectively always-on even with `min-instances=0`. Setting `--min-instances=1` costs nothing extra and closes the few-second window while a recycled instance restarts.
+
+The render queue debounces in process, so the service must stay at `--max-instances=1`. Scaling out would require moving the debounce behind a shared lock.
+
+Because the instance never sleeps, the always-allocated CPU is billed around the clock. Moving interactivity from Socket Mode to an HTTP endpoint would allow CPU throttling and genuine scale-to-zero, which is the main cost lever available here.
 
 ---
 
@@ -86,6 +102,19 @@ The application uses environment variables for all secrets and configuration.
     cp .env.example .env
     ```
 2.  Open the newly created `.env` file and fill in the values. See the comments in the file for detailed instructions on where to find each token and ID.
+
+#### Behaviour tuning
+
+All optional:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DEPLOY_BRANCHES` | `main,master` | Branches that always get a card. Other deploying branches are picked up automatically by the rule below. |
+| `DEPLOY_STAGE_PATTERN` | `^deploy` | Any pipeline containing a matching stage gets a card, whatever its branch, so a new deploying branch is picked up without a config change. |
+| `POST_NON_DEPLOY_FAILURES` | `false` | Also post when a non-deploying branch fails. |
+| `UPDATE_DEBOUNCE_MS` | `4000` | Coalescing window for progress updates. Failures and terminal states ignore it. |
+| `STATE_TTL_DAYS` | `14` | Age at which commit state is swept from Firestore. |
+| `PIPELINE_STATE_BACKEND` | *(unset)* | Set to `memory` for a hermetic, Firestore-free run. Used by the test suite. |
 
 ⚠️ **Security Notice**: Never commit your `.env` file or any files containing secrets to version control. The `.gitignore` file is configured to prevent this, but always double-check before committing.
 
