@@ -82,14 +82,19 @@ const applyPipelineEvent = (current: CommitState | undefined, event: any): Commi
             .trim(),
         commitUrl: String(event.commit?.url ?? state.commitUrl),
         authorName: String(event.commit?.author?.name ?? event.user?.name ?? state.authorName),
-        mergeRequest: event.merge_request
+        // `...state` already carries any merge request seen earlier, so this
+        // only needs to add one. Assigning the absent case would write
+        // `undefined`, which Firestore rejects outright.
+        ...(event.merge_request
             ? {
-                  iid: Number(event.merge_request.iid),
-                  title: String(event.merge_request.title),
-                  url: String(event.merge_request.url),
-                  targetBranch: String(event.merge_request.target_branch),
+                  mergeRequest: {
+                      iid: Number(event.merge_request.iid),
+                      title: String(event.merge_request.title),
+                      url: String(event.merge_request.url),
+                      targetBranch: String(event.merge_request.target_branch),
+                  },
               }
-            : state.mergeRequest,
+            : {}),
         pipelines: { ...state.pipelines, [String(attrs.id)]: snapshot },
         updatedAt: Date.now(),
     };
@@ -116,7 +121,9 @@ const applyJobEvent = (current: CommitState | undefined, event: any): CommitStat
         stage: String(event.build_stage),
         status: String(event.build_status) as JobStatus,
         allowFailure: Boolean(event.build_allow_failure),
-        finishedAt: event.build_finished_at ? Date.parse(event.build_finished_at) : undefined,
+        // Only set when the job has actually finished; an explicit `undefined`
+        // is not a legal Firestore value.
+        ...(event.build_finished_at ? { finishedAt: Date.parse(event.build_finished_at) } : {}),
     };
 
     const snapshot: PipelineSnapshot = existing

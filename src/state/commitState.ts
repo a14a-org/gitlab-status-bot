@@ -8,9 +8,37 @@ const COLLECTION = 'commit-states';
 let _db: Firestore | undefined;
 const db = (): Firestore => {
     if (!_db) {
-        _db = new Firestore();
+        // Firestore rejects documents containing `undefined`. Dropping such
+        // fields is the correct behaviour for this schema: every optional field
+        // means "not known yet".
+        _db = new Firestore({ ignoreUndefinedProperties: true });
     }
     return _db;
+};
+
+/**
+ * Recursively removes keys whose value is `undefined`.
+ *
+ * Applied on both backends deliberately. The in-memory backend round-trips
+ * through JSON, which drops undefined silently, so without this the two
+ * backends disagree and the test suite cannot see a Firestore rejection.
+ */
+export const stripUndefined = <T>(value: T): T => {
+    if (Array.isArray(value)) {
+        // Firestore rejects undefined inside arrays too, and mapping it through
+        // would leave it in place. Nothing in this schema stores sparse arrays.
+        return value.filter((v) => v !== undefined).map(stripUndefined) as unknown as T;
+    }
+    if (value !== null && typeof value === 'object') {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+            if (v !== undefined) {
+                out[k] = stripUndefined(v);
+            }
+        }
+        return out as T;
+    }
+    return value;
 };
 
 const useMemory = (): boolean => process.env.PIPELINE_STATE_BACKEND === 'memory';
@@ -40,7 +68,7 @@ export const updateCommitState = async (
     if (useMemory()) {
         const next = mutate(clone(memoryStore.get(key)));
         if (next) {
-            memoryStore.set(key, clone(next));
+            memoryStore.set(key, stripUndefined(clone(next)));
         }
         return next;
     }
@@ -53,7 +81,7 @@ export const updateCommitState = async (
         const next = mutate(current);
 
         if (next) {
-            tx.set(ref, next);
+            tx.set(ref, stripUndefined(next));
         }
         return next;
     });
