@@ -16,9 +16,10 @@ export const startServer = async (): Promise<string> => {
 	process.env.UPDATE_DEBOUNCE_MS = "25";
 
 	const app = createTestApp(createSlackStub(slackCalls));
-	server = createServer(app);
-	await new Promise<void>((resolve) => server?.listen(0, resolve));
-	const { port } = server?.address() as AddressInfo;
+	const httpServer = createServer(app);
+	server = httpServer;
+	await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+	const { port } = httpServer.address() as AddressInfo;
 	return `http://127.0.0.1:${port}`;
 };
 
